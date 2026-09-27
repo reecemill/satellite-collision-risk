@@ -36,7 +36,9 @@ F2, averaged over five train/test splits:
 | Most recent update only | 0.798 | 0.817 | 0.454 | 0.499 |
 | Most recent update + trends | 0.812 | 0.817 | 0.502 | 0.499 |
 
-The trend features are what made the model competitive. On the events where the risk can still change, the model with trends matches the baseline's F2 while raising about a third fewer false alarms (32 per test split against 48), at the cost of more missed threats (6.4 against 4.8). Overall it's still slightly behind, because on events that get no more updates it sometimes second-guesses a forecast that can't be wrong.
+On the events where the risk can still change, the model with trends matches the baseline's F2 while raising about a third fewer false alarms (32 per test split against 48), at the cost of more missed threats (6.4 against 4.8). Overall it's still slightly behind, because on events that get no more updates it sometimes second-guesses a forecast that can't be wrong.
+
+These differences are small enough to depend on the software version. With scikit-learn 1.9 instead of 1.7, the same notebook gives the model 0.485 without trend features and 0.461 with them on the events where the risk can still change, so the trend features' apparent gain isn't reliable. Two things hold in both versions: the model doesn't beat the baseline overall, and it raises far fewer false alarms (26 to 32 per test split against 48) while missing more threats (6.4 to 8 against 4.8). `requirements.txt` pins the versions that produce the table above.
 
 So the model doesn't clearly beat the baseline. It trades a few more misses for many fewer false alarms. Whether that's worth it depends on how an operator weighs a missed threat against a wasted maneuver. F2 counts a miss as the more costly mistake, and by that measure the two are tied. Only 93 dangerous events fall in the group where the risk can still change, about 18 per test split, so telling the two apart would take more data.
 
@@ -52,3 +54,15 @@ So the model doesn't clearly beat the baseline. It trades a few more misses for 
 - `01_explore.ipynb`: explores the data. Dataset size, updates per event, how rare dangerous events are, and whether danger shows up early.
 - `02_baseline.ipynb`: builds the "assume the risk won't change" forecast and scores it.
 - `03_model.ipynb`: labels, the train/test split, the gradient-boosting model with trend features, and the five-split comparison with the baseline.
+
+## How to run
+You'll need Python 3.11 or 3.12. The data isn't included in this repository. Download `train_data.zip` from the [Kelvins Collision Avoidance Challenge data page](https://kelvins.esa.int/collision-avoidance-challenge/data/), unzip it, and put `train_data.csv` in a `Data/` folder at the top of the repository. The page also has `test_data.csv`, which isn't used here: it has no final risks, so predictions on it can't be scored.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+jupyter lab
+```
+
+Run the notebooks in `notebooks/` in order. `03_model.ipynb` takes a few minutes, most of it spent training the models for the five-split comparison.
