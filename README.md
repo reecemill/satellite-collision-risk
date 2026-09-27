@@ -15,9 +15,40 @@ Dangerous events are rare: only 365 of 13,154 (2.8%) end with a risk of −6 or 
 ## Baseline
 Before building a model, I tested the simplest possible forecast: take the most recent risk available two days before closest approach and assume it doesn't change. Of 323 dangerous events, it caught 300 (93%) and missed 23. It also raised 269 false alarms, so only about half of its warnings were real. That gives an F2 score of about 0.81; F2 weights catching threats more heavily than avoiding false alarms. 1,212 events had no data from two or more days out and couldn't be forecast at all. Any model I build has to beat this rule, or it isn't adding anything.
 
+## Why the baseline is hard to beat
+Some events get no new updates after the two-day mark. For those, the most recent risk two days out is also the final risk, so the baseline is right by definition. That's 3,050 of the 11,942 events that can be forecast, including 230 of the 323 dangerous ones. All of the baseline's mistakes come from the other 8,892 events, where updates keep arriving after the forecast point. There it caught 70 of 93 dangerous events, missed 23, raised 269 false alarms, and scored an F2 of only 0.49. That's where the real forecasting problem is, so I score models on both groups.
+
+## Model
+I trained a gradient-boosting classifier (scikit-learn's `HistGradientBoostingClassifier`) on what's known about each event two days before closest approach:
+
+- **The most recent update:** all of its measurements (about 100 columns), such as miss distance, relative speed, and position uncertainty.
+- **Trend features from earlier updates:** how much the risk and the miss distance changed since the previous update, the highest and lowest risk so far, and the number of updates so far.
+
+Every feature uses only updates from two or more days out, the information an operator would actually have. Dangerous events are rare, so they count more heavily in training. The model outputs a probability, and the cutoff for flagging an event is chosen to maximize F2 using cross-validated predictions on the training events only.
+
+Events are split 80/20 into training and test sets, keeping the same share of dangerous events in each. One split turned out not to be enough. On the first split I tried, the model beat the baseline (F2 0.821 against 0.800), but it lost on four of five other splits. All results below are averages over those five splits.
+
+## Results
+F2, averaged over five train/test splits:
+
+| Features | All events: model | All events: baseline | Risk can still change: model | Risk can still change: baseline |
+|---|---|---|---|---|
+| Most recent update only | 0.798 | 0.817 | 0.454 | 0.499 |
+| Most recent update + trends | 0.812 | 0.817 | 0.502 | 0.499 |
+
+The trend features are what made the model competitive. On the events where the risk can still change, the model with trends matches the baseline's F2 while raising about a third fewer false alarms (32 per test split against 48), at the cost of more missed threats (6.4 against 4.8). Overall it's still slightly behind, because on events that get no more updates it sometimes second-guesses a forecast that can't be wrong.
+
+So the model doesn't clearly beat the baseline. It trades a few more misses for many fewer false alarms. Whether that's worth it depends on how an operator weighs a missed threat against a wasted maneuver. F2 counts a miss as the more costly mistake, and by that measure the two are tied. Only 93 dangerous events fall in the group where the risk can still change, about 18 per test split, so telling the two apart would take more data.
+
+## Decisions along the way
+- **Which events to label.** The competition only kept events whose final update came within a day of closest approach, so the final risk is trustworthy. Here that rule left just 66 of the 323 dangerous events, because dangerous events tend to stop getting updates earlier than safe ones. I kept every event with data from two or more days out instead. The trade-off is that some final risks come from updates more than a day before closest approach.
+- **Checking the result on more than one split.** A single test set has only about 65 dangerous events, so luck can decide the winner. Averaging over five splits showed that the first "win" was luck.
+
 ## Next steps
-A model can only beat the baseline by catching some of the 23 missed threats or cutting down the 269 false alarms. Next, I'll look at those two groups directly: how do missed threats and false alarms differ from the events the baseline got right? Whatever separates them becomes a feature for the model. Then I'll train a model and compare it against the baseline's F2 of 0.81.
+- A sequence model (such as an LSTM) that reads each event's updates in order and learns trends itself, compared with the baseline on the same five splits.
+- A closer look at the false alarms that remain: what the events flagged by both the model and the baseline have in common.
 
 ## Notebooks
 - `01_explore.ipynb`: explores the data. Dataset size, updates per event, how rare dangerous events are, and whether danger shows up early.
 - `02_baseline.ipynb`: builds the "assume the risk won't change" forecast and scores it.
+- `03_model.ipynb`: labels, the train/test split, the gradient-boosting model with trend features, and the five-split comparison with the baseline.
