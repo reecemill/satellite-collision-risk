@@ -1,5 +1,7 @@
 # Satellite Collision Risk Prediction
 
+**[Explore the results interactively](https://reecemill.github.io/collision/)**: pick any test event and see its risk over time and what the rule and the model predicted.
+
 ## The problem
 Two objects in orbit can collide, causing anything from slight damage to the end of a mission. Satellite operators receive data about upcoming close approaches and have to decide whether a threat is real and whether to maneuver their satellite out of the way. Maneuvering isn't free: it uses fuel and money, both limited resources. Maneuvering when it isn't needed wastes them, and not maneuvering when it is could cost the satellite.
 
@@ -65,4 +67,4 @@ pip install -r requirements.txt
 jupyter lab
 ```
 
-Run the notebooks in `notebooks/` in order. `03_model.ipynb` takes a few minutes, most of it spent training the models for the five-split comparison.
+Run the notebooks in `notebooks/` in order. `scripts/build_explorer_data.py` repeats the model notebook's steps and writes the data file for the interactive explorer. `03_model.ipynb` takes a few minutes, most of it spent training the models for the five-split comparison.
